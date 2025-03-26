@@ -1,0 +1,9 @@
+PROCESS BEFORE OUTPUT.
+  MODULE status_0300.
+*
+PROCESS AFTER INPUT.
+  MODULE exit_0300 AT EXIT-COMMAND.
+  FIELD gs_0300-partner MODULE check_input_partner ON REQUEST.
+  FIELD gs_0300-marka   MODULE check_input_marka ON REQUEST.
+  FIELD gs_0300-matkl   MODULE check_input_matkl ON REQUEST.
+  MODULE user_command_0300.
