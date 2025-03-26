@@ -1,0 +1,161 @@
+report  zpp_stok_sevk_uretim.
+
+tables: mara.
+
+type-pools slis.
+
+data: gt_item type table of zpp_stok_sevk_uretim with header line.
+
+selection-screen begin of block b1 with frame title text-001.
+select-options: s_matnr for mara-matnr,
+parameters:     p_werks like marc-werks default 'OTO' obligatory.
+selection-screen end of block b1.
+
+selection-screen begin of block b2 with frame title text-002.
+parameters: p_gn radiobutton group dnm,
+            p_hf radiobutton group dnm.
+selection-screen end of block b2.
+
+selection-screen begin of block b3 with frame title text-003.
+selection-screen begin of line.
+parameters: p_bri type c as checkbox default 'X'.
+selection-screen comment 3(15) text-004.
+parameters: p_frg type c as checkbox default 'X'.
+selection-screen comment 21(15) text-005.
+selection-screen end of line.
+selection-screen end of block b3.
+
+start-of-selection.
+  perform get_data.
+  perform display_data.
+
+*&---------------------------------------------------------------------*
+*&      Form  GET_DATA
+*&---------------------------------------------------------------------*
+form get_data .
+endform.                    " GET_DATA
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_DATA
+*&---------------------------------------------------------------------*
+form display_data .
+
+  DEFINE modif_fcat.
+    &1-scrtext_l = &2.
+    &1-scrtext_m = &2.
+    &1-scrtext_s = &2.
+    &1-reptext = &2.
+    &1-colddictxt = 'L'.
+  END-OF-DEFINITION.
+
+  data: lt_fieldcat TYPE lvc_t_fcat,
+        ls_layout type lvc_s_layo,
+	ls_variant  TYPE disvariant.
+
+  data: lt_sort type lvc_t_sort with header line.
+
+  call function 'LVC_FIELDCATALOG_MERGE'
+    exporting
+      i_structure_name       = 'ZPP_STOK_SEVK_URETIM'
+      i_client_never_display = 'X'
+      i_bypassing_buffer     = 'X'
+    changing
+      ct_fieldcat            = lt_fieldcat[]
+    exceptions
+      inconsistent_interface = 1
+      program_error          = 2
+      others                 = 3.
+
+  ls_layout-cwidth_opt = 'X'.
+  ls_layout-zebra = 'X'.
+  ls_layout-box_fname = 'SEL'.
+  ls_layout-info_fname = 'CLR'.
+  ls_variant-report = sy-repid.
+  ls_variant-handle = 'H1'.
+
+  LOOP AT lt_fieldcat ASSIGNING FIELD-SYMBOL(<ls_fieldcat>).
+    CASE <ls_fieldcat>-fieldname.
+*      WHEN ''.
+*        <ls_fieldcat>-no_out = 'X'.
+*      WHEN ''.
+*        <ls_fieldcat>-scrtext_l = ''.
+*        <ls_fieldcat>-scrtext_m = <ls_fieldcat>-scrtext_l.
+*        <ls_fieldcat>-scrtext_s = <ls_fieldcat>-scrtext_l.
+*        <ls_fieldcat>-reptext = <ls_fieldcat>-scrtext_l.
+*        <ls_fieldcat>-colddictxt = 'L'.
+        modif_fcat <ls_fieldcat> 'Top No'.
+    ENDCASE.
+  ENDLOOP.
+
+  clear lt_sort.
+  lt_sort-spos = 1.
+  lt_sort-fieldname = 'MATNR'.
+  lt_sort-up = 'X'.
+  append lt_sort.
+
+  call function 'REUSE_ALV_GRID_DISPLAY_LVC'
+    exporting
+      i_bypassing_buffer       = 'X'
+      i_callback_program       = sy-repid
+      i_callback_pf_status_set = 'SET_PF_STATUS'
+      i_callback_user_command  = 'USER_COMMAND'
+      i_callback_top_of_page   = 'TOP_OF_PAGE'
+      is_layout_lvc            = ls_layout
+      it_fieldcat_lvc          = lt_fieldcat[]
+      it_sort_lvc              = lt_sort[]
+      i_save                   = 'A'
+      is_variant               = ls_variant
+    tables
+      t_outtab                 = gt_item[]
+    exceptions
+      program_error            = 1
+      others                   = 2.
+endform.                    " DISPLAY_DATA
+*&---------------------------------------------------------------------*
+*&      Form USER_COMMAND
+*&---------------------------------------------------------------------*
+FORM user_command USING iv_ucomm LIKE sy-ucomm
+                        is_selfield TYPE slis_selfield.
+  CASE iv_ucomm.
+    WHEN '&PRINT'.
+  ENDCASE.
+ENDFORM.                  
+*---------------------------------------------------------------------*
+*       FORM SET_PF_STATUS                                            *
+*---------------------------------------------------------------------*
+form set_pf_status using it_extab type slis_t_extab.
+  set pf-status 'STANDARD'.
+endform.                    
+*&---------------------------------------------------------------------*
+*&      Form  TOP_OF_PAGE
+*&---------------------------------------------------------------------*
+form top_of_page.
+  data: lt_heading type slis_t_listheader,
+        ls_heading type slis_listheader.
+
+  data: lv_name1 like t001w-name1.
+
+* Program name
+  clear ls_heading.
+  ls_heading-typ = 'S'.
+  ls_heading-key = 'Rapor Tarihi: '.
+  write p_tarih to ls_heading-info dd/mm/yyyy.
+  append ls_heading to lt_heading.
+
+* User who is running the report
+  clear: ls_heading, lv_name1.
+  ls_heading-typ = 'S'.
+  ls_heading-key = ' retim Yeri: '.
+  select single name1 into lv_name1 from t001w
+         where werks = p_werks.
+  concatenate lv_name1 '-' p_werks
+              into ls_heading-info separated by space.
+  append ls_heading to lt_heading.
+
+  call function 'REUSE_ALV_COMMENTARY_WRITE'
+    exporting
+      it_list_commentary = lt_heading.
+*   I_LOGO                   =
+*   I_END_OF_LIST_GRID       =
+*   I_ALV_FORM               =.
+
+endform.                    
